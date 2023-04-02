@@ -1,0 +1,13 @@
+export enum RoutesNames {
+  /////////////////////////////////
+  /// PUBLIC ROUTES
+  /////////////////////////////////
+
+  SignInScreen = "SignInScreen",
+  LandingScreen = "LandingScreen",
+
+  /////////////////////////////////
+  /// PRIVATE ROUTES
+  /////////////////////////////////
+  HomeScreen = "HomeScreen",
+}
