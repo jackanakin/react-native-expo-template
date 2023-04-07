@@ -8,11 +8,12 @@ import { NewRunningAsyncJob } from "../../../@types/async-job/AsyncJob";
 import { STORAGE_ALIASES } from "./constants/StorageAliases";
 import { BooleanConstant } from "../../../@types/data/primitive";
 import IContextData from "../../@common/Provider/model/IContextData";
-import { Languages } from "../../i18n/languages";
+import { Language } from "../../i18n/languages";
+import LanguageManager from "../../i18n/language-manager";
 
 interface PreferencesContextData extends IContextData {
-  language: Languages;
-  setNewLanguage(language: Languages): Promise<void>;
+  language: Language;
+  setNewLanguage(language: Language): Promise<void>;
   showLandingScreen: boolean;
   disableLandingScreen(): Promise<void>;
 }
@@ -24,7 +25,9 @@ const PreferencesContext = createContext<PreferencesContextData>(
 const PreferencesProvider: React.FC<ChildrenProp> = ({ children }) => {
   const [status, setStatus] = useState<IAsyncJob>(NewRunningAsyncJob);
 
-  const [language, setLanguage] = useState<Languages>(Languages.pt_br);
+  const [language, setLanguage] = useState<Language>(
+    LanguageManager.getInstance().getDefaultLanguage()
+  );
   const [showLandingScreen, setShowLandingScreen] = useState<boolean>(true);
 
   const disableLandingScreen = async () => {
@@ -36,39 +39,50 @@ const PreferencesProvider: React.FC<ChildrenProp> = ({ children }) => {
     setShowLandingScreen(false);
   };
 
-  async function loadAsyncStoragePreferences(): Promise<void> {
+  async function load(): Promise<void> {
     setStatus(NewRunningAsyncJob);
 
-    const preferences = await AsyncStorage.multiGet([
-      `${STORAGE_ALIASES.language}`,
-      `${STORAGE_ALIASES.showLandingScreen}`,
-    ]);
+    try {
+      const preferences = await AsyncStorage.multiGet([
+        `${STORAGE_ALIASES.language}`,
+        `${STORAGE_ALIASES.showLandingScreen}`,
+      ]);
 
-    const localLanguage = preferences[0][1] as Languages | null;
-    const showLandingScreen = preferences[1][1] as BooleanConstant | null;
+      const localLanguage = preferences[0][1] as string | null;
+      const showLandingScreen = preferences[1][1] as BooleanConstant | null;
 
-    if (localLanguage) {
-      setLanguage(localLanguage);
-      await i18n.init(localLanguage);
-    } else {
+      let language = LanguageManager.getInstance().getDefaultLanguage();
+
+      if (localLanguage) {
+        const validLanguage =
+          LanguageManager.getInstance().getByNamespace(localLanguage);
+        if (validLanguage) language = validLanguage;
+      }
+
+      setLanguage(language);
       await i18n.init(language);
-    }
 
-    if (showLandingScreen == BooleanConstant.FALSE) {
-      setShowLandingScreen(false);
-    }
+      if (showLandingScreen == BooleanConstant.FALSE) {
+        setShowLandingScreen(false);
+      }
 
-    setStatus(status.doSucceed());
+      setStatus(status.doSucceed());
+    } catch (error) {
+      setStatus(status.doFail(""));
+    }
   }
 
-  const setNewLanguage = async (language: Languages) => {
-    await AsyncStorage.setItem(`${STORAGE_ALIASES.language}`, language);
+  const setNewLanguage = async (language: Language) => {
+    await AsyncStorage.setItem(
+      STORAGE_ALIASES.language,
+      language.getNamespace()
+    );
     i18n.init(language);
     setLanguage(language);
   };
 
   useEffect(() => {
-    loadAsyncStoragePreferences();
+    load();
   }, []);
 
   return (

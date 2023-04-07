@@ -3,11 +3,11 @@ import moment from "moment";
 
 import { PT_BR } from "./translations/pt-BR/pt_br";
 import { EN } from "./translations/en/en";
-import { Languages } from "./languages";
+import { Language } from "./languages";
 
-export async function init(language: Languages): Promise<void> {
+export async function init(language: Language): Promise<void> {
   await i18next.init({
-    lng: language, // if you're using a language detector, do not define the lng option
+    lng: language.getNamespace(), // if you're using a language detector, do not define the lng option
     compatibilityJSON: "v3",
     debug: false,
     resources: {

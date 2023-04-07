@@ -1,18 +1,21 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import * as SecureStore from "expo-secure-store";
 
-import { IUser } from "../../@common/Authentication/entity/IUser";
+import User, { UserBuilder } from "../../@common/Authentication/entity/User";
 import IAsyncJob from "../../../@types/async-job/IAsyncJob";
 import { ISignInRequestDTO } from "../../@common/Authentication/dto/ISignInRequestDTO";
 import { ChildrenProp } from "../../../@types/react-native/ChildrenProps";
 import {
-  NewIdleAsyncJob,
   NewRunningAsyncJob,
   NewSuccessAsyncJob,
 } from "../../../@types/async-job/AsyncJob";
 import IContextData from "../../@common/Provider/model/IContextData";
+import { STORAGE_ALIASES } from "./constants/StorageAliases";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../../config/api/api";
 
 interface SignInContextData extends IContextData {
-  user: IUser | null;
+  user: User | null;
 
   signIn(signInDto: ISignInRequestDTO): Promise<void>;
   signOut(): Promise<void>;
@@ -23,49 +26,82 @@ const AuthenticationContext = createContext<SignInContextData>(
 );
 
 const AuthenticationProvider: React.FC<ChildrenProp> = ({ children }) => {
-  const [user, setUser] = useState<IUser | null>(null);
-  const [status, setStatus] = useState<IAsyncJob>(NewIdleAsyncJob);
+  const [user, setUser] = useState<User | null>(null);
+  const [status, setStatus] = useState<IAsyncJob>(NewRunningAsyncJob);
 
   const signIn = async (signInDto: ISignInRequestDTO) => {
     if (status.isRunning()) return;
 
-    let user: IUser | null = null;
-
     try {
       const { login, password } = signInDto;
-
       setStatus(NewRunningAsyncJob);
 
       //   await firebaseAuth.signInWithEmailAndPassword(auth, email, password);
-      user = { email: "jardelkuhn@gmail.com", name: "Jardel Kuhn" };
+      const user = new UserBuilder(
+        "Jardel Kuhn",
+        "jardelkuhn@gmail.com"
+      ).build();
+
+      await SecureStore.setItemAsync(STORAGE_ALIASES.token, "token");
+      api.defaults.headers.authorization = `Bearer ${"token"}`;
+      await AsyncStorage.setItem(STORAGE_ALIASES.user, user.toJson());
+
+      setUser(user);
+
+      setStatus(NewSuccessAsyncJob);
+    } catch (error) {
+      setUser(User.toNull());
+      setStatus(status.doFail(""));
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setStatus(NewRunningAsyncJob);
+
+      await SecureStore.deleteItemAsync(STORAGE_ALIASES.token);
+      api.defaults.headers.authorization = null;
+      setUser(null);
 
       setStatus(NewSuccessAsyncJob);
     } catch (error) {
       setStatus(status.doFail(""));
     }
-
-    setUser(user);
   };
 
-  const signOut = async () => {
+  async function load(): Promise<void> {
     try {
-      setUser(null);
-      //   signOutWithFirebase();
+      const authenticationStorage = await AsyncStorage.multiGet([
+        STORAGE_ALIASES.user,
+      ]);
+
+      const userJson = authenticationStorage[0][1];
+      const user = new User().parseJson(userJson);
+      const token = await SecureStore.getItemAsync(STORAGE_ALIASES.token);
+
+      if (!token || !user) {
+        setStatus(NewSuccessAsyncJob);
+      }
+
+      api.defaults.headers.authorization = `Bearer ${token}`;
+
+      setUser(user);
+
+      setStatus(NewSuccessAsyncJob);
     } catch (error) {
       setStatus(status.doFail(""));
     }
-  };
+  }
 
-  const resetStatus = () => {
-    setStatus(NewIdleAsyncJob);
-  };
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <AuthenticationContext.Provider
       value={{
         user,
         status,
-        resetStatus,
         signIn,
         signOut,
       }}
