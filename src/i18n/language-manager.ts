@@ -4,8 +4,8 @@ export default class LanguageManager {
   private static instance: LanguageManager;
   private availableLanguages = new Map<string, Language>();
 
-  private pt_br = new Language(Languages.pt_br, "pt_br-flag");
-  private en = new Language(Languages.en, "en-flag");
+  private pt_br = new Language("Português (BR)", Languages.pt_br, "pt_br-flag");
+  private en = new Language("English (WW)", Languages.en, "en-flag");
 
   private constructor() {
     this.availableLanguages.set(Languages.en, this.en);
@@ -26,5 +26,9 @@ export default class LanguageManager {
 
   getByNamespace(namespace: string): Language | undefined {
     return this.availableLanguages.get(namespace);
+  }
+
+  getAvailableLanguages(): Map<string, Language> {
+    return new Map(this.availableLanguages);
   }
 }

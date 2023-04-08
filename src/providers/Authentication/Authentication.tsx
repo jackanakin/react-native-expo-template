@@ -61,6 +61,8 @@ const AuthenticationProvider: React.FC<ChildrenProp> = ({ children }) => {
 
       await SecureStore.deleteItemAsync(STORAGE_ALIASES.token);
       api.defaults.headers.authorization = null;
+      await AsyncStorage.removeItem(STORAGE_ALIASES.user);
+
       setUser(null);
 
       setStatus(NewSuccessAsyncJob);

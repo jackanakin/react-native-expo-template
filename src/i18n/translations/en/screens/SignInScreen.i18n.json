@@ -1,4 +1,6 @@
 {
   "SignInScreen.title": "Login",
+  "SignInScreen.login": "E-mail or login",
+  "SignInScreen.password": "Password",
   "SignInScreen.loginButton": "Enter"
 }
